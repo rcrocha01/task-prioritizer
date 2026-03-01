@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { supabase } from "./supabaseClient";
 
 const QUADRANTS = [
   { id: "do", label: "DO FIRST", sub: "Urgent + Important", color: "#e63946", emoji: "🔥", desc: "Critical deadlines, crises, urgent problems" },
@@ -6,22 +7,6 @@ const QUADRANTS = [
   { id: "delegate", label: "DELEGATE", sub: "Urgent + Not Important", color: "#e9c46a", emoji: "🤝", desc: "Interruptions, some emails, some meetings" },
   { id: "eliminate", label: "ELIMINATE", sub: "Not Urgent + Not Important", color: "#adb5bd", emoji: "🗑️", desc: "Time wasters, trivial tasks, distractions" },
 ];
-
-let nextId = Date.now();
-
-const DEFAULT_TASKS = [
-  { id: 1, text: "Reply to client proposal", quadrant: "do", done: false, dueDate: "", hiddenFromQuadrant: false },
-  { id: 2, text: "Learn a new skill", quadrant: "schedule", done: false, dueDate: "", hiddenFromQuadrant: false },
-  { id: 3, text: "Schedule team lunch", quadrant: "delegate", done: false, dueDate: "", hiddenFromQuadrant: false },
-  { id: 4, text: "Browse social media", quadrant: "eliminate", done: false, dueDate: "", hiddenFromQuadrant: false },
-];
-
-function loadTasks() {
-  try {
-    const saved = localStorage.getItem("eisenhower-tasks-v2");
-    return saved ? JSON.parse(saved) : DEFAULT_TASKS;
-  } catch { return DEFAULT_TASKS; }
-}
 
 function getDueLabel(dateStr) {
   if (!dateStr) return null;
@@ -35,7 +20,8 @@ function getDueLabel(dateStr) {
 }
 
 export default function App() {
-  const [tasks, setTasks] = useState(loadTasks);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [urgent, setUrgent] = useState(null);
@@ -45,42 +31,74 @@ export default function App() {
   const [showDone, setShowDone] = useState(true);
   const inputRef = useRef();
 
+  // Load tasks from Supabase on mount
   useEffect(() => {
-    try { localStorage.setItem("eisenhower-tasks-v2", JSON.stringify(tasks)); } catch {}
-  }, [tasks]);
+    async function loadTasks() {
+      const { data, error } = await supabase.from("tasks").select("*").order("created_at", { ascending: true });
+      if (!error) setTasks(data || []);
+      setLoading(false);
+    }
+    loadTasks();
+  }, []);
 
   const getQuadrant = (u, i) => u && i ? "do" : !u && i ? "schedule" : u && !i ? "delegate" : "eliminate";
 
   const handleAddStart = () => { if (!input.trim()) return; setStep("urgent"); };
   const handleUrgent = (val) => { setUrgent(val); setStep("important"); };
-  const handleImportant = (val) => {
+
+  const handleImportant = async (val) => {
     const q = getQuadrant(urgent, val);
-    setTasks((prev) => [...prev, { id: nextId++, text: input.trim(), quadrant: q, done: false, dueDate, hiddenFromQuadrant: false }]);
+    const newTask = { text: input.trim(), quadrant: q, done: false, due_date: dueDate, hidden_from_quadrant: false };
+    const { data, error } = await supabase.from("tasks").insert([newTask]).select().single();
+    if (!error) setTasks((prev) => [...prev, data]);
     setInput(""); setDueDate(""); setUrgent(null); setStep("input");
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  const handleToggleDone = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done, hiddenFromQuadrant: !t.done ? t.hiddenFromQuadrant : false } : t));
+  const handleToggleDone = async (task) => {
+    const updates = { done: !task.done, hidden_from_quadrant: !task.done ? task.hidden_from_quadrant : false };
+    const { error } = await supabase.from("tasks").update(updates).eq("id", task.id);
+    if (!error) setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, ...updates } : t));
+  };
 
-  // Delete from quadrant view only (task remains in completed section)
-  const handleHideFromQuadrant = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, hiddenFromQuadrant: true } : t));
+  const handleHideFromQuadrant = async (task) => {
+    const { error } = await supabase.from("tasks").update({ hidden_from_quadrant: true }).eq("id", task.id);
+    if (!error) setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, hidden_from_quadrant: true } : t));
+  };
 
-  // Permanently delete (from completed section)
-  const handleDeletePermanently = (id) => setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleDeletePermanently = async (id) => {
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (!error) setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
 
-  const handleDueDateChange = (id, date) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, dueDate: date } : t));
+  const handleDueDateChange = async (task, date) => {
+    const { error } = await supabase.from("tasks").update({ due_date: date }).eq("id", task.id);
+    if (!error) setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, due_date: date } : t));
+  };
 
-  const handleDragStart = (e, task) => { if (task.done) return; setDragging(task); e.dataTransfer.effectAllowed = "move"; };
-  const handleDrop = (e, qid) => {
+  const handleDragStart = (e, task) => {
+    if (task.done) return;
+    setDragging(task);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDrop = async (e, qid) => {
     e.preventDefault();
-    if (dragging && dragging.quadrant !== qid) setTasks((prev) => prev.map((t) => t.id === dragging.id ? { ...t, quadrant: qid } : t));
+    if (dragging && dragging.quadrant !== qid) {
+      const { error } = await supabase.from("tasks").update({ quadrant: qid }).eq("id", dragging.id);
+      if (!error) setTasks((prev) => prev.map((t) => t.id === dragging.id ? { ...t, quadrant: qid } : t));
+    }
     setDragging(null); setDragOver(null);
   };
 
   const activeTasks = tasks.filter((t) => !t.done);
   const completedTasks = tasks.filter((t) => t.done);
-  const totalActive = activeTasks.length;
-  const totalDone = completedTasks.length;
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#0f0f0f", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.4)", fontSize: "16px" }}>Loading your tasks…</p>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "#0f0f0f", fontFamily: "'Georgia', serif", padding: "32px 20px", color: "#f1f1f1" }}>
@@ -129,7 +147,7 @@ export default function App() {
       <div style={{ textAlign: "center", marginBottom: "36px" }}>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "8px" }}>Task Prioritizer</h1>
         <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          Eisenhower Matrix · {totalActive} active · {totalDone} completed
+          Eisenhower Matrix · {activeTasks.length} active · {completedTasks.length} completed
         </p>
       </div>
 
@@ -175,7 +193,7 @@ export default function App() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", maxWidth: 900, margin: "0 auto" }}>
         {QUADRANTS.map((q) => {
           const qActive = tasks.filter((t) => t.quadrant === q.id && !t.done);
-          const qDone = tasks.filter((t) => t.quadrant === q.id && t.done && !t.hiddenFromQuadrant);
+          const qDone = tasks.filter((t) => t.quadrant === q.id && t.done && !t.hidden_from_quadrant);
           const isOver = dragOver === q.id;
 
           return (
@@ -194,20 +212,20 @@ export default function App() {
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: "2px" }}>{q.sub}</div>
               </div>
 
-              {/* Active tasks */}
               {qActive.length === 0 && qDone.length === 0 && (
                 <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "24px 0", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.1)" }}>Drop tasks here</div>
               )}
+
               {qActive.map((task) => {
-                const due = getDueLabel(task.dueDate);
+                const due = getDueLabel(task.due_date);
                 return (
                   <div key={task.id} className="task-chip active" draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={() => { setDragging(null); setDragOver(null); }}>
-                    <div className="checkbox" onClick={() => handleToggleDone(task.id)} />
+                    <div className="checkbox" onClick={() => handleToggleDone(task)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="task-text" style={{ marginBottom: "4px" }}>{task.text}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         {due && <span className="due-badge" style={{ color: due.color }}>{due.label}</span>}
-                        <input type="date" className="inline-date" value={task.dueDate} onChange={(e) => handleDueDateChange(task.id, e.target.value)} title="Set due date" />
+                        <input type="date" className="inline-date" value={task.due_date || ""} onChange={(e) => handleDueDateChange(task, e.target.value)} title="Set due date" />
                       </div>
                     </div>
                     <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)} title="Delete">✕</button>
@@ -215,22 +233,20 @@ export default function App() {
                 );
               })}
 
-              {/* Completed tasks inside quadrant */}
               {qDone.length > 0 && (
                 <>
                   {qActive.length > 0 && <hr className="done-divider" />}
                   <div className="done-label">✓ Completed</div>
                   {qDone.map((task) => (
                     <div key={task.id} className="task-chip done-in-quadrant">
-                      <div className="checkbox checked" onClick={() => handleToggleDone(task.id)}>
+                      <div className="checkbox checked" onClick={() => handleToggleDone(task)}>
                         <span style={{ color: "white", fontSize: "10px", lineHeight: 1 }}>✓</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="task-text">{task.text}</div>
-                        {task.dueDate && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.2)", marginTop: "3px" }}>{task.dueDate}</div>}
+                        {task.due_date && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.2)", marginTop: "3px" }}>{task.due_date}</div>}
                       </div>
-                      {/* X here hides from quadrant but keeps in bottom section */}
-                      <button className="delete-btn" onClick={() => handleHideFromQuadrant(task.id)} title="Remove from quadrant">✕</button>
+                      <button className="delete-btn" onClick={() => handleHideFromQuadrant(task)} title="Remove from quadrant">✕</button>
                     </div>
                   ))}
                 </>
@@ -259,17 +275,16 @@ export default function App() {
                 const q = QUADRANTS.find((q) => q.id === task.quadrant);
                 return (
                   <div key={task.id} className="task-chip done-in-bottom">
-                    <div className="checkbox checked" onClick={() => handleToggleDone(task.id)}>
+                    <div className="checkbox checked" onClick={() => handleToggleDone(task)}>
                       <span style={{ color: "white", fontSize: "10px", lineHeight: 1 }}>✓</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="task-text">{task.text}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
                         <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: q.color, fontWeight: 600 }}>{q.emoji} {q.label}</span>
-                        {task.dueDate && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.25)" }}>· {task.dueDate}</span>}
+                        {task.due_date && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.25)" }}>· {task.due_date}</span>}
                       </div>
                     </div>
-                    {/* X here permanently deletes */}
                     <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)} title="Delete permanently">✕</button>
                   </div>
                 );
@@ -280,7 +295,7 @@ export default function App() {
       )}
 
       <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", textAlign: "center", marginTop: "24px", letterSpacing: "0.05em" }}>
-        ↕ Drag to move · ✓ Checkbox to complete/undo · ✕ in quadrant hides from there · ✕ in completed deletes permanently · 💾 Auto-saved
+        ↕ Drag to move · ✓ Checkbox to complete/undo · ✕ in quadrant hides from there · ✕ in completed deletes permanently · ☁️ Synced across devices
       </p>
     </div>
   );
