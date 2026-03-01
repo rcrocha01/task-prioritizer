@@ -31,7 +31,6 @@ export default function App() {
   const [showDone, setShowDone] = useState(true);
   const inputRef = useRef();
 
-  // Load tasks from Supabase on mount
   useEffect(() => {
     async function loadTasks() {
       const { data, error } = await supabase.from("tasks").select("*").order("created_at", { ascending: true });
@@ -101,10 +100,37 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f0f0f", fontFamily: "'Georgia', serif", padding: "32px 20px", color: "#f1f1f1" }}>
+    <div style={{ minHeight: "100vh", background: "#0f0f0f", fontFamily: "'Georgia', serif", padding: "24px 16px", color: "#f1f1f1", overflowX: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; width: 100%; }
+
+        .matrix-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          max-width: 900px;
+          margin: 0 auto;
+          width: 100%;
+        }
+        @media (min-width: 640px) {
+          .matrix-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .add-panel {
+          max-width: 640px;
+          margin: 0 auto 28px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 16px;
+          padding: 20px;
+          width: 100%;
+        }
+
+        .add-row { display: flex; gap: 8px; width: 100%; }
+        .date-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
         .task-chip { display: flex; align-items: flex-start; gap: 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; font-family: 'DM Sans', sans-serif; font-size: 13px; transition: all 0.2s ease; animation: fadeIn 0.3s ease; background: rgba(255,255,255,0.06); }
         .task-chip.active { cursor: grab; }
         .task-chip.active:hover { background: rgba(255,255,255,0.1); }
@@ -112,85 +138,100 @@ export default function App() {
         .task-chip.done-in-quadrant .task-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
         .task-chip.done-in-bottom { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.06); cursor: default; }
         .task-chip.done-in-bottom .task-text { text-decoration: line-through; color: rgba(255,255,255,0.35); }
+
         .done-divider { border: none; border-top: 1px dashed rgba(255,255,255,0.1); margin: 10px 0 8px; }
         .done-label { font-family: 'DM Sans', sans-serif; font-size: 10px; color: rgba(255,255,255,0.2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
-        .checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid rgba(255,255,255,0.3); background: transparent; cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+
+        .checkbox { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid rgba(255,255,255,0.3); background: transparent; cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .checkbox:hover { border-color: rgba(255,255,255,0.6); }
         .checkbox.checked { background: #2a9d8f; border-color: #2a9d8f; }
-        .delete-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.15); font-size: 14px; transition: color 0.15s; line-height: 1; padding: 0; flex-shrink: 0; margin-top: 1px; }
+
+        .delete-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.2); font-size: 16px; transition: color 0.15s; line-height: 1; padding: 4px; flex-shrink: 0; }
         .delete-btn:hover { color: #e63946; }
-        .quadrant { border-radius: 16px; padding: 20px; min-height: 200px; transition: all 0.2s ease; border: 2px solid transparent; }
-        .quadrant.dragover { transform: scale(1.02); border-style: dashed !important; }
-        .btn-choice { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; padding: 12px 28px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s ease; background: transparent; color: #f1f1f1; }
-        .btn-yes:hover { background: #2a9d8f; border-color: #2a9d8f; }
-        .btn-no:hover { background: #e63946; border-color: #e63946; }
-        .add-input { background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; color: #f1f1f1; font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 13px 18px; outline: none; width: 100%; transition: border-color 0.2s; }
+
+        .quadrant { border-radius: 14px; padding: 16px; min-height: 120px; transition: all 0.2s ease; border: 2px solid transparent; width: 100%; }
+        .quadrant.dragover { transform: scale(1.01); border-style: dashed !important; }
+
+        .btn-choice { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; padding: 12px 20px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s ease; background: transparent; color: #f1f1f1; flex: 1; }
+        .btn-yes:hover, .btn-yes:active { background: #2a9d8f; border-color: #2a9d8f; }
+        .btn-no:hover, .btn-no:active { background: #e63946; border-color: #e63946; }
+
+        .add-input { background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; color: #f1f1f1; font-family: 'DM Sans', sans-serif; font-size: 16px; padding: 13px 14px; outline: none; flex: 1; min-width: 0; transition: border-color 0.2s; -webkit-appearance: none; }
         .add-input:focus { border-color: rgba(255,255,255,0.4); }
         .add-input::placeholder { color: rgba(255,255,255,0.3); }
-        .date-input { background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; color: rgba(255,255,255,0.6); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 13px 14px; outline: none; transition: border-color 0.2s; width: 160px; flex-shrink: 0; }
+
+        .date-input { background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; color: rgba(255,255,255,0.6); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; flex: 1; min-width: 130px; -webkit-appearance: none; }
         .date-input::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
-        .add-btn { background: #f1f1f1; color: #0f0f0f; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; padding: 13px 22px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-        .add-btn:hover { background: #e0e0e0; transform: translateY(-1px); }
-        .add-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-        .inline-date { background: transparent; border: none; color: rgba(255,255,255,0.3); font-family: 'DM Sans', sans-serif; font-size: 11px; cursor: pointer; outline: none; padding: 0; width: 100px; }
+
+        .add-btn { background: #f1f1f1; color: #0f0f0f; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; padding: 13px 18px; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+        .add-btn:hover { background: #e0e0e0; }
+        .add-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .inline-date { background: transparent; border: none; color: rgba(255,255,255,0.3); font-family: 'DM Sans', sans-serif; font-size: 11px; cursor: pointer; outline: none; padding: 0; width: 90px; }
         .inline-date::-webkit-calendar-picker-indicator { filter: invert(0.3); cursor: pointer; width: 10px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
         .count-badge { display: inline-block; background: rgba(255,255,255,0.12); border-radius: 20px; padding: 2px 10px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; margin-left: 8px; vertical-align: middle; }
-        .due-badge { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.08); }
-        .done-section { max-width: 900px; margin: 32px auto 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; }
-        .done-section-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: rgba(255,255,255,0.04); cursor: pointer; transition: background 0.2s; }
+        .due-badge { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.08); white-space: nowrap; }
+
+        .done-section { max-width: 900px; margin: 24px auto 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; width: 100%; }
+        .done-section-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: rgba(255,255,255,0.04); cursor: pointer; }
         .done-section-header:hover { background: rgba(255,255,255,0.07); }
-        .done-section-body { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+        .done-section-body { padding: 14px 16px; display: grid; grid-template-columns: 1fr; gap: 8px; }
+        @media (min-width: 640px) {
+          .done-section-body { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+        }
       `}</style>
 
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "36px" }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "8px" }}>Task Prioritizer</h1>
-        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+      <div style={{ textAlign: "center", marginBottom: "28px" }}>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(24px, 6vw, 48px)", fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: "6px" }}>Task Prioritizer</h1>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Eisenhower Matrix · {activeTasks.length} active · {completedTasks.length} completed
         </p>
       </div>
 
       {/* Add Task Panel */}
-      <div style={{ maxWidth: 640, margin: "0 auto 40px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "24px" }}>
+      <div className="add-panel">
         {step === "input" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <input ref={inputRef} className="add-input" placeholder="What's on your plate? Add a task…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddStart()} autoFocus />
+          <>
+            <div className="add-row">
+              <input ref={inputRef} className="add-input" placeholder="Add a task…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddStart()} />
               <button className="add-btn" onClick={handleAddStart} disabled={!input.trim()}>Add</button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>Due date (optional):</span>
+            <div className="date-row">
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>Due date:</span>
               <input type="date" className="date-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
-          </div>
+          </>
         )}
         {step === "urgent" && (
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Categorizing</p>
-            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", marginBottom: "20px" }}>"{input}"</p>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "16px", marginBottom: "18px", color: "rgba(255,255,255,0.7)" }}>⚡ Is this <strong>urgent</strong>? (needs attention soon / has a deadline)</p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button className="btn-choice btn-yes" onClick={() => handleUrgent(true)}>Yes, urgent</button>
-              <button className="btn-choice btn-no" onClick={() => handleUrgent(false)}>Not urgent</button>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.4)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Categorizing</p>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", marginBottom: "16px" }}>"{input}"</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", marginBottom: "16px", color: "rgba(255,255,255,0.7)" }}>⚡ Is this <strong>urgent</strong>?</p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button className="btn-choice btn-yes" onClick={() => handleUrgent(true)}>Yes</button>
+              <button className="btn-choice btn-no" onClick={() => handleUrgent(false)}>No</button>
             </div>
           </div>
         )}
         {step === "important" && (
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>One more question</p>
-            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", marginBottom: "20px" }}>"{input}"</p>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "16px", marginBottom: "18px", color: "rgba(255,255,255,0.7)" }}>🎯 Is this <strong>important</strong>? (moves your goals forward)</p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button className="btn-choice btn-yes" onClick={() => handleImportant(true)}>Yes, important</button>
-              <button className="btn-choice btn-no" onClick={() => handleImportant(false)}>Not really</button>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.4)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.08em" }}>One more</p>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", marginBottom: "16px" }}>"{input}"</p>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "15px", marginBottom: "16px", color: "rgba(255,255,255,0.7)" }}>🎯 Is this <strong>important</strong>?</p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button className="btn-choice btn-yes" onClick={() => handleImportant(true)}>Yes</button>
+              <button className="btn-choice btn-no" onClick={() => handleImportant(false)}>No</button>
             </div>
           </div>
         )}
       </div>
 
       {/* Matrix Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", maxWidth: 900, margin: "0 auto" }}>
+      <div className="matrix-grid">
         {QUADRANTS.map((q) => {
           const qActive = tasks.filter((t) => t.quadrant === q.id && !t.done);
           const qDone = tasks.filter((t) => t.quadrant === q.id && t.done && !t.hidden_from_quadrant);
@@ -203,17 +244,17 @@ export default function App() {
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => handleDrop(e, q.id)}>
 
-              <div style={{ marginBottom: "14px" }}>
+              <div style={{ marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "20px" }}>{q.emoji}</span>
+                  <span style={{ fontSize: "18px" }}>{q.emoji}</span>
                   <span className="count-badge" style={{ color: q.color }}>{qActive.length}</span>
                 </div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", fontWeight: 700, color: q.color, letterSpacing: "0.05em" }}>{q.label}</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: "2px" }}>{q.sub}</div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 700, color: q.color, letterSpacing: "0.04em" }}>{q.label}</div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: "2px" }}>{q.sub}</div>
               </div>
 
               {qActive.length === 0 && qDone.length === 0 && (
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "24px 0", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.1)" }}>Drop tasks here</div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", textAlign: "center", padding: "20px 0", borderRadius: "8px", border: "1px dashed rgba(255,255,255,0.1)" }}>No tasks here</div>
               )}
 
               {qActive.map((task) => {
@@ -222,13 +263,13 @@ export default function App() {
                   <div key={task.id} className="task-chip active" draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={() => { setDragging(null); setDragOver(null); }}>
                     <div className="checkbox" onClick={() => handleToggleDone(task)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="task-text" style={{ marginBottom: "4px" }}>{task.text}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div className="task-text" style={{ marginBottom: "4px", wordBreak: "break-word" }}>{task.text}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                         {due && <span className="due-badge" style={{ color: due.color }}>{due.label}</span>}
                         <input type="date" className="inline-date" value={task.due_date || ""} onChange={(e) => handleDueDateChange(task, e.target.value)} title="Set due date" />
                       </div>
                     </div>
-                    <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)} title="Delete">✕</button>
+                    <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)}>✕</button>
                   </div>
                 );
               })}
@@ -243,28 +284,28 @@ export default function App() {
                         <span style={{ color: "white", fontSize: "10px", lineHeight: 1 }}>✓</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="task-text">{task.text}</div>
+                        <div className="task-text" style={{ wordBreak: "break-word" }}>{task.text}</div>
                         {task.due_date && <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.2)", marginTop: "3px" }}>{task.due_date}</div>}
                       </div>
-                      <button className="delete-btn" onClick={() => handleHideFromQuadrant(task)} title="Remove from quadrant">✕</button>
+                      <button className="delete-btn" onClick={() => handleHideFromQuadrant(task)}>✕</button>
                     </div>
                   ))}
                 </>
               )}
 
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)", marginTop: "10px", fontStyle: "italic" }}>{q.desc}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.18)", marginTop: "8px", fontStyle: "italic" }}>{q.desc}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Completed Section at Bottom */}
+      {/* Completed Section */}
       {completedTasks.length > 0 && (
         <div className="done-section">
           <div className="done-section-header" onClick={() => setShowDone((v) => !v)}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "18px" }}>✅</span>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "16px", fontWeight: 700 }}>Completed Tasks</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "16px" }}>✅</span>
+              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "15px", fontWeight: 700 }}>Completed Tasks</span>
               <span className="count-badge" style={{ color: "#2a9d8f" }}>{completedTasks.length}</span>
             </div>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "18px", color: "rgba(255,255,255,0.4)" }}>{showDone ? "▾" : "▸"}</span>
@@ -279,13 +320,13 @@ export default function App() {
                       <span style={{ color: "white", fontSize: "10px", lineHeight: 1 }}>✓</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="task-text">{task.text}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+                      <div className="task-text" style={{ wordBreak: "break-word" }}>{task.text}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px", flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: q.color, fontWeight: 600 }}>{q.emoji} {q.label}</span>
                         {task.due_date && <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: "rgba(255,255,255,0.25)" }}>· {task.due_date}</span>}
                       </div>
                     </div>
-                    <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)} title="Delete permanently">✕</button>
+                    <button className="delete-btn" onClick={() => handleDeletePermanently(task.id)}>✕</button>
                   </div>
                 );
               })}
@@ -294,8 +335,8 @@ export default function App() {
         </div>
       )}
 
-      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.2)", textAlign: "center", marginTop: "24px", letterSpacing: "0.05em" }}>
-        ↕ Drag to move · ✓ Checkbox to complete/undo · ✕ in quadrant hides from there · ✕ in completed deletes permanently · ☁️ Synced across devices
+      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.2)", textAlign: "center", marginTop: "20px", letterSpacing: "0.04em", padding: "0 8px" }}>
+        ☁️ Synced across devices · ✓ Tap checkbox to complete · ✕ to delete
       </p>
     </div>
   );
