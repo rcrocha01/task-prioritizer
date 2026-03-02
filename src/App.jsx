@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
 const QUADRANTS = [
-  { id: "do", label: "Do First", sub: "Urgent · Important", color: "#e63946", bg: "rgba(230,57,70,0.06)", emoji: "🔥", desc: "Critical deadlines & crises" },
-  { id: "schedule", label: "Schedule", sub: "Not Urgent · Important", color: "#2a9d8f", bg: "rgba(42,157,143,0.06)", emoji: "📅", desc: "Planning, growth & strategy" },
-  { id: "delegate", label: "Delegate", sub: "Urgent · Not Important", color: "#e9c46a", bg: "rgba(233,196,106,0.06)", emoji: "🤝", desc: "Interruptions & quick requests" },
-  { id: "eliminate", label: "Eliminate", sub: "Not Urgent · Not Important", color: "#6c757d", bg: "rgba(108,117,125,0.06)", emoji: "🗑️", desc: "Distractions & time wasters" },
+  { id: "do", label: "Do First", sub: "Urgent · Important", color: "#ff4757", accent: "rgba(255,71,87,0.12)", emoji: "🔥", desc: "Act on these now" },
+  { id: "schedule", label: "Schedule", sub: "Important · Not Urgent", color: "#2ed8a8", accent: "rgba(46,216,168,0.08)", emoji: "📅", desc: "Block time for these" },
+  { id: "delegate", label: "Delegate", sub: "Urgent · Not Important", color: "#ffa502", accent: "rgba(255,165,2,0.08)", emoji: "🤝", desc: "Hand these off" },
+  { id: "eliminate", label: "Eliminate", sub: "Not Urgent · Not Important", color: "#747d8c", accent: "rgba(116,125,140,0.06)", emoji: "🗑️", desc: "Cut these ruthlessly" },
 ];
 
 function getDueLabel(dateStr) {
@@ -13,10 +13,10 @@ function getDueLabel(dateStr) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(dateStr + "T00:00:00");
   const diff = Math.round((due - today) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: "#e63946" };
-  if (diff === 0) return { label: "Today", color: "#e9c46a" };
-  if (diff === 1) return { label: "Tomorrow", color: "#e9c46a" };
-  return { label: `${diff}d`, color: "#6c757d" };
+  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, color: "#ff4757", bg: "rgba(255,71,87,0.15)" };
+  if (diff === 0) return { label: "Today", color: "#ffa502", bg: "rgba(255,165,2,0.15)" };
+  if (diff === 1) return { label: "Tomorrow", color: "#ffa502", bg: "rgba(255,165,2,0.12)" };
+  return { label: `${diff}d`, color: "#747d8c", bg: "rgba(116,125,140,0.1)" };
 }
 
 export default function App() {
@@ -88,390 +88,442 @@ export default function App() {
   const completedTasks = tasks.filter((t) => t.done);
 
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "14px", letterSpacing: "0.1em" }}>LOADING…</p>
+    <div style={{ minHeight: "100vh", background: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ fontFamily: "'DM Sans', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "13px", letterSpacing: "0.15em", textTransform: "uppercase" }}>Loading…</p>
     </div>
   );
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body, #root { width: 100%; height: 100%; background: #111; }
-        body { font-family: 'DM Sans', sans-serif; color: #f0f0f0; overflow-x: hidden; }
+        html, body, #root { width: 100%; min-height: 100vh; background: #0d0d0d; }
+        body { font-family: 'DM Sans', sans-serif; color: #f0f0f0; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
 
-        /* ── STICKY HEADER ── */
-        .header {
-          position: sticky; top: 0; z-index: 100;
-          background: rgba(17,17,17,0.96);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255,255,255,0.07);
-          padding: 0 24px;
-          display: flex;
-          align-items: center;
-          gap: 20px;
-          height: 64px;
+        /* ─── HEADER ─────────────────────────────── */
+        .hdr {
+          position: sticky; top: 0; z-index: 200;
+          background: rgba(13,13,13,0.95); backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          display: flex; align-items: center; gap: 0;
+          height: 60px; padding: 0;
         }
-        .header-brand {
-          display: flex; align-items: center; gap: 14px;
-          flex-shrink: 0;
-          border-right: 1px solid rgba(255,255,255,0.08);
-          padding-right: 20px;
+        .hdr-brand {
+          display: flex; flex-direction: column; justify-content: center;
+          padding: 0 24px; border-right: 1px solid rgba(255,255,255,0.06);
+          height: 100%; min-width: 200px;
         }
-        .header-stats {
-          display: flex; gap: 16px; flex-shrink: 0;
-          border-right: 1px solid rgba(255,255,255,0.08);
-          padding-right: 20px;
+        .hdr-brand h1 {
+          font-family: 'Playfair Display', serif;
+          font-size: 16px; font-weight: 900; letter-spacing: -0.01em;
+          color: #f0f0f0; line-height: 1;
         }
-        .stat-pill {
-          display: flex; align-items: center; gap: 5px;
-          font-size: 12px; font-weight: 500;
-          color: rgba(255,255,255,0.4);
+        .hdr-brand p {
+          font-size: 9px; color: rgba(255,255,255,0.2);
+          letter-spacing: 0.15em; text-transform: uppercase; margin-top: 3px;
         }
-        .stat-num { font-weight: 700; font-size: 14px; }
-        .header-add { flex: 1; display: flex; align-items: center; gap: 10px; }
+        .hdr-counters {
+          display: flex; align-items: center; gap: 0;
+          border-right: 1px solid rgba(255,255,255,0.06);
+          height: 100%;
+        }
+        .hdr-counter {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 0 18px; height: 100%;
+          border-right: 1px solid rgba(255,255,255,0.04);
+          transition: background 0.15s;
+          cursor: default;
+        }
+        .hdr-counter:last-child { border-right: none; }
+        .hdr-counter:hover { background: rgba(255,255,255,0.03); }
+        .hdr-counter-num { font-size: 20px; font-weight: 700; line-height: 1; }
+        .hdr-counter-lbl { font-size: 8px; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px; }
+        .hdr-input-zone {
+          flex: 1; display: flex; align-items: center;
+          gap: 10px; padding: 0 20px; height: 100%;
+        }
 
-        .add-input {
+        /* ─── INPUT ──────────────────────────────── */
+        .inp {
           flex: 1; min-width: 0;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 8px; color: #f0f0f0;
-          font-family: 'DM Sans', sans-serif; font-size: 14px;
-          padding: 9px 14px; outline: none;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px; color: #f0f0f0;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 400;
+          padding: 10px 16px; outline: none;
           transition: border-color 0.2s, background 0.2s;
         }
-        .add-input:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); }
-        .add-input::placeholder { color: rgba(255,255,255,0.25); }
+        .inp:focus { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.07); }
+        .inp::placeholder { color: rgba(255,255,255,0.2); }
 
-        .add-btn {
-          background: #f0f0f0; color: #111; border: none;
-          border-radius: 8px; font-family: 'DM Sans', sans-serif;
-          font-size: 13px; font-weight: 700; padding: 9px 18px;
-          cursor: pointer; white-space: nowrap; flex-shrink: 0;
-          transition: background 0.15s, transform 0.1s;
-          letter-spacing: 0.02em;
+        .btn-add {
+          background: #f0f0f0; color: #0d0d0d;
+          border: none; border-radius: 10px;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+          padding: 10px 20px; cursor: pointer; white-space: nowrap;
+          letter-spacing: 0.02em; transition: all 0.15s;
         }
-        .add-btn:hover { background: #ddd; transform: translateY(-1px); }
-        .add-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
+        .btn-add:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .btn-add:disabled { opacity: 0.2; cursor: not-allowed; transform: none; box-shadow: none; }
 
-        .date-toggle {
-          background: none; border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 8px; color: rgba(255,255,255,0.4);
+        .btn-date {
+          background: none; border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px; color: rgba(255,255,255,0.35);
           font-family: 'DM Sans', sans-serif; font-size: 12px;
-          padding: 9px 12px; cursor: pointer; white-space: nowrap;
+          padding: 10px 14px; cursor: pointer; white-space: nowrap;
           transition: all 0.15s; flex-shrink: 0;
         }
-        .date-toggle:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.7); }
-        .date-toggle.active { border-color: #2a9d8f; color: #2a9d8f; }
+        .btn-date:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+        .btn-date.set { border-color: #2ed8a8; color: #2ed8a8; }
 
-        .date-input-inline {
-          background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 8px; color: rgba(255,255,255,0.7);
-          font-family: 'DM Sans', sans-serif; font-size: 13px;
-          padding: 9px 12px; outline: none; flex-shrink: 0;
-          -webkit-appearance: none;
+        .inp-date {
+          background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px; color: rgba(255,255,255,0.6);
+          font-family: 'DM Sans', sans-serif; font-size: 12px;
+          padding: 10px 12px; outline: none; flex-shrink: 0; -webkit-appearance: none;
         }
-        .date-input-inline::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+        .inp-date::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 
-        /* categorize UI in header */
-        .cat-bar {
-          flex: 1; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        /* categorize step */
+        .cat-flow { flex: 1; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .cat-task-name {
+          font-family: 'Playfair Display', serif; font-size: 15px;
+          color: #f0f0f0; flex-shrink: 0; max-width: 300px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .cat-task { font-family: 'Playfair Display', serif; font-size: 16px; color: #f0f0f0; flex-shrink: 0; }
-        .cat-question { font-size: 13px; color: rgba(255,255,255,0.6); flex-shrink: 0; }
-        .cat-btns { display: flex; gap: 8px; }
-        .cat-btn {
-          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
-          padding: 8px 18px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.15);
-          cursor: pointer; background: transparent; color: #f0f0f0; transition: all 0.15s;
+        .cat-q { font-size: 13px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+        .cat-yes, .cat-no {
+          font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700;
+          padding: 8px 20px; border-radius: 8px; cursor: pointer;
+          border: 1.5px solid; transition: all 0.15s; letter-spacing: 0.03em;
         }
-        .cat-btn-yes:hover { background: #2a9d8f; border-color: #2a9d8f; }
-        .cat-btn-no:hover { background: #e63946; border-color: #e63946; }
+        .cat-yes { background: transparent; border-color: #2ed8a8; color: #2ed8a8; }
+        .cat-yes:hover { background: #2ed8a8; color: #0d0d0d; }
+        .cat-no { background: transparent; border-color: #ff4757; color: #ff4757; }
+        .cat-no:hover { background: #ff4757; color: #fff; }
 
-        /* ── MATRIX ── */
-        .matrix {
+        /* ─── MATRIX WRAPPER ─────────────────────── */
+        .matrix-wrap {
+          position: relative;
           display: grid;
           grid-template-columns: 1fr 1fr;
           grid-template-rows: 1fr 1fr;
-          min-height: calc(100vh - 64px);
+          min-height: calc(100vh - 60px);
         }
 
-        .quadrant {
-          padding: 20px 22px;
-          border-right: 1px solid rgba(255,255,255,0.06);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          overflow-y: auto;
-          transition: background 0.2s;
-          border-left: 3px solid transparent;
-          position: relative;
+        /* Axis lines */
+        .axis-v {
+          position: absolute; left: 50%; top: 0; bottom: 0;
+          width: 1px; background: rgba(255,255,255,0.08); pointer-events: none; z-index: 10;
         }
-        .quadrant:nth-child(2), .quadrant:nth-child(4) { border-right: none; }
-        .quadrant:nth-child(3), .quadrant:nth-child(4) { border-bottom: none; }
-        .quadrant.dragover { background: rgba(255,255,255,0.03) !important; }
+        .axis-h {
+          position: absolute; top: 50%; left: 0; right: 0;
+          height: 1px; background: rgba(255,255,255,0.08); pointer-events: none; z-index: 10;
+        }
+        /* Axis labels */
+        .axis-label {
+          position: absolute; z-index: 11; pointer-events: none;
+          font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+          color: rgba(255,255,255,0.15);
+        }
+        .axis-urgent-high { top: 50%; left: 12px; transform: translateY(-50%); }
+        .axis-urgent-low { top: 50%; right: 12px; transform: translateY(-50%); }
+        .axis-imp-high {
+          left: 50%; top: 12px; transform: translateX(-50%);
+          writing-mode: horizontal-tb;
+        }
+        .axis-imp-low {
+          left: 50%; bottom: 12px; transform: translateX(-50%);
+        }
 
-        .q-header {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 14px; padding-bottom: 10px;
+        /* ─── QUADRANT ───────────────────────────── */
+        .quad {
+          padding: 20px; overflow-y: auto;
+          border-right: 1px solid rgba(255,255,255,0.05);
           border-bottom: 1px solid rgba(255,255,255,0.05);
+          transition: background 0.2s;
+          min-height: 0;
         }
-        .q-title-group { display: flex; align-items: center; gap: 8px; }
-        .q-label { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-        .q-sub { font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.05em; margin-top: 1px; }
-        .q-count {
-          font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700;
-          padding: 2px 8px; border-radius: 20px;
-          background: rgba(255,255,255,0.07); min-width: 24px; text-align: center;
+        .quad:nth-child(2), .quad:nth-child(4) { border-right: none; }
+        .quad:nth-child(3), .quad:nth-child(4) { border-bottom: none; }
+        .quad.over { background: rgba(255,255,255,0.025); }
+
+        .quad-hdr {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .quad-name {
+          font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .quad-sub {
+          font-size: 9px; color: rgba(255,255,255,0.25);
+          letter-spacing: 0.06em; margin-top: 2px;
+        }
+        .quad-badge {
+          font-size: 11px; font-weight: 800;
+          width: 22px; height: 22px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
         }
 
-        /* ── TASK CHIPS ── */
-        .chip {
-          display: flex; align-items: flex-start; gap: 9px;
-          padding: 9px 11px; margin-bottom: 5px;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px; font-size: 13px; line-height: 1.4;
-          background: rgba(255,255,255,0.04);
-          transition: all 0.15s; animation: fadeUp 0.25s ease;
-          cursor: grab;
+        /* ─── TASK CARD ──────────────────────────── */
+        .card {
+          display: flex; align-items: flex-start; gap: 10px;
+          background: rgba(255,255,255,0.055);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;
+          font-size: 13px; line-height: 1.45; cursor: grab;
+          transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
+          animation: rise 0.2s ease;
         }
-        .chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.14); }
-        .chip.done-q { background: transparent; border-color: rgba(255,255,255,0.04); cursor: default; opacity: 0.5; }
-        .chip.done-q .chip-text { text-decoration: line-through; color: rgba(255,255,255,0.35); }
-        .chip.done-b { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); cursor: default; }
-        .chip.done-b .chip-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
+        .card:hover {
+          background: rgba(255,255,255,0.09);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        }
+        .card.done-q {
+          background: transparent; border-color: rgba(255,255,255,0.04);
+          cursor: default; opacity: 0.4;
+          transform: none !important; box-shadow: none !important;
+        }
+        .card.done-q .card-txt { text-decoration: line-through; }
+        .card.done-b {
+          background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.04);
+          cursor: default; opacity: 0.55;
+        }
+        .card.done-b .card-txt { text-decoration: line-through; color: rgba(255,255,255,0.35); }
 
         .cb {
-          width: 15px; height: 15px; border-radius: 3px;
-          border: 1.5px solid rgba(255,255,255,0.25);
+          width: 16px; height: 16px; border-radius: 4px;
+          border: 1.5px solid rgba(255,255,255,0.2);
           background: transparent; cursor: pointer; flex-shrink: 0; margin-top: 1px;
           display: flex; align-items: center; justify-content: center;
           transition: all 0.15s;
         }
-        .cb:hover { border-color: rgba(255,255,255,0.5); }
-        .cb.on { background: #2a9d8f; border-color: #2a9d8f; }
+        .cb:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); }
+        .cb.on { background: #2ed8a8; border-color: #2ed8a8; }
 
-        .del {
+        .x-btn {
           background: none; border: none; cursor: pointer;
-          color: rgba(255,255,255,0.15); font-size: 12px;
-          padding: 1px 3px; flex-shrink: 0; transition: color 0.15s; margin-top: 1px;
+          color: rgba(255,255,255,0.12); font-size: 11px;
+          padding: 2px 3px; flex-shrink: 0; transition: color 0.12s; margin-top: 1px;
         }
-        .del:hover { color: #e63946; }
+        .x-btn:hover { color: #ff4757; }
 
         .due-tag {
-          font-size: 10px; font-weight: 600; padding: 1px 5px;
-          border-radius: 3px; background: rgba(255,255,255,0.07); white-space: nowrap;
-          letter-spacing: 0.03em;
+          font-size: 9px; font-weight: 700; padding: 2px 6px;
+          border-radius: 4px; white-space: nowrap; letter-spacing: 0.04em;
         }
-        .inline-date {
-          background: transparent; border: none; color: rgba(255,255,255,0.2);
-          font-family: 'DM Sans', sans-serif; font-size: 10px;
-          cursor: pointer; outline: none; padding: 0; width: 80px;
+        .idate {
+          background: transparent; border: none;
+          color: rgba(255,255,255,0.18); font-family: 'DM Sans', sans-serif;
+          font-size: 10px; cursor: pointer; outline: none; padding: 0; width: 80px;
         }
-        .inline-date::-webkit-calendar-picker-indicator { filter: invert(0.3); cursor: pointer; width: 8px; }
+        .idate::-webkit-calendar-picker-indicator { filter: invert(0.3); cursor: pointer; width: 8px; }
 
-        .empty-state {
-          font-size: 12px; color: rgba(255,255,255,0.12); text-align: center;
-          padding: 20px 0; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.07);
-          margin-top: 4px;
+        .empty {
+          font-size: 11px; color: rgba(255,255,255,0.1); text-align: center;
+          padding: 20px 12px; border-radius: 8px;
+          border: 1px dashed rgba(255,255,255,0.06);
+          font-style: italic; margin-top: 2px;
         }
 
-        .done-divider { border: none; border-top: 1px dashed rgba(255,255,255,0.08); margin: 8px 0 6px; }
-        .done-label { font-size: 9px; color: rgba(255,255,255,0.18); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+        .done-div { border: none; border-top: 1px dashed rgba(255,255,255,0.07); margin: 8px 0 6px; }
+        .done-lbl { font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5px; }
 
-        /* ── COMPLETED SECTION ── */
-        .done-section { border-top: 1px solid rgba(255,255,255,0.07); }
-        .done-header {
+        /* ─── COMPLETED SECTION ──────────────────── */
+        .comp-section { border-top: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.01); }
+        .comp-hdr {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 24px; cursor: pointer; background: rgba(255,255,255,0.02);
-          transition: background 0.15s;
+          padding: 12px 20px; cursor: pointer; transition: background 0.15s;
         }
-        .done-header:hover { background: rgba(255,255,255,0.04); }
-        .done-body {
-          padding: 12px 24px 20px;
-          display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px;
+        .comp-hdr:hover { background: rgba(255,255,255,0.03); }
+        .comp-body {
+          padding: 8px 20px 20px;
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px;
         }
 
-        /* ── FOOTER ── */
         .footer {
-          padding: 8px 24px; border-top: 1px solid rgba(255,255,255,0.05);
-          font-size: 10px; color: rgba(255,255,255,0.15); text-align: center; letter-spacing: 0.05em;
+          padding: 10px 20px; border-top: 1px solid rgba(255,255,255,0.04);
+          font-size: 10px; color: rgba(255,255,255,0.12);
+          text-align: center; letter-spacing: 0.05em;
         }
 
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        @keyframes rise { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
 
-        /* ── MOBILE ── */
+        /* ─── MOBILE ─────────────────────────────── */
         @media (max-width: 680px) {
-          .header { height: auto; padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
-          .header-brand { border-right: none; padding-right: 0; }
-          .header-stats { border-right: none; padding-right: 0; }
-          .header-add { width: 100%; }
-          .matrix { grid-template-columns: 1fr; grid-template-rows: auto; min-height: auto; }
-          .quadrant { min-height: 160px; }
-          .quadrant:nth-child(2), .quadrant:nth-child(4) { border-right: none; }
-          .quadrant:nth-child(3) { border-bottom: 1px solid rgba(255,255,255,0.06); }
-          .done-body { grid-template-columns: 1fr; }
-          .done-header, .done-body { padding-left: 16px; padding-right: 16px; }
-          .cat-bar { gap: 10px; }
+          .hdr { height: auto; flex-wrap: wrap; padding: 12px 14px; gap: 10px; }
+          .hdr-brand { border-right: none; padding: 0; min-width: unset; }
+          .hdr-counters { border-right: none; gap: 0; }
+          .hdr-counter { padding: 0 12px; }
+          .hdr-input-zone { width: 100%; padding: 0; flex-wrap: wrap; }
+          .matrix-wrap { grid-template-columns: 1fr; grid-template-rows: auto; min-height: auto; }
+          .quad { min-height: 150px; }
+          .quad:nth-child(3) { border-bottom: 1px solid rgba(255,255,255,0.05); }
+          .axis-v, .axis-h, .axis-label { display: none; }
+          .comp-body { grid-template-columns: 1fr; }
         }
       `}</style>
 
-      {/* ── STICKY HEADER ── */}
-      <header className="header">
-        <div className="header-brand">
-          <div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", fontWeight: 900, letterSpacing: "-0.01em", lineHeight: 1 }}>Task Prioritizer</div>
-            <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: "3px" }}>Eisenhower Matrix</div>
-          </div>
+      {/* ─── HEADER ─────────────────────────────── */}
+      <header className="hdr">
+        <div className="hdr-brand">
+          <h1>Task Prioritizer</h1>
+          <p>Eisenhower Matrix</p>
         </div>
 
-        <div className="header-stats">
+        <div className="hdr-counters">
           {QUADRANTS.map((q) => {
             const count = tasks.filter((t) => t.quadrant === q.id && !t.done).length;
             return (
-              <div key={q.id} className="stat-pill">
-                <span>{q.emoji}</span>
-                <span className="stat-num" style={{ color: count > 0 ? q.color : "rgba(255,255,255,0.2)" }}>{count}</span>
+              <div key={q.id} className="hdr-counter" title={q.label}>
+                <span className="hdr-counter-num" style={{ color: count > 0 ? q.color : "rgba(255,255,255,0.15)" }}>{count}</span>
+                <span className="hdr-counter-lbl">{q.emoji}</span>
               </div>
             );
           })}
         </div>
 
-        <div className="header-add">
+        <div className="hdr-input-zone">
           {step === "input" && (
             <>
-              <input ref={inputRef} className="add-input" placeholder="Add a task…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddStart()} autoFocus />
-              <button className={`date-toggle${dueDate ? " active" : ""}`} onClick={() => setShowDatePicker((v) => !v)}>
-                {dueDate ? `📅 ${dueDate}` : "📅 Due date"}
-              </button>
+              <input ref={inputRef} className="inp" placeholder="Add a task to prioritize…" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddStart()} autoFocus />
               {showDatePicker && (
-                <input type="date" className="date-input-inline" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <input type="date" className="inp-date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               )}
-              <button className="add-btn" onClick={handleAddStart} disabled={!input.trim()}>Add →</button>
+              <button className={`btn-date${dueDate ? " set" : ""}`} onClick={() => setShowDatePicker((v) => !v)}>
+                {dueDate ? `📅 ${dueDate}` : "📅 Date"}
+              </button>
+              <button className="btn-add" onClick={handleAddStart} disabled={!input.trim()}>Add →</button>
             </>
           )}
           {step === "urgent" && (
-            <div className="cat-bar">
-              <span className="cat-task">"{input}"</span>
-              <span className="cat-question">⚡ Urgent?</span>
-              <div className="cat-btns">
-                <button className="cat-btn cat-btn-yes" onClick={() => handleUrgent(true)}>Yes</button>
-                <button className="cat-btn cat-btn-no" onClick={() => handleUrgent(false)}>No</button>
-              </div>
+            <div className="cat-flow">
+              <span className="cat-task-name">"{input}"</span>
+              <span className="cat-q">⚡ Is this urgent?</span>
+              <button className="cat-yes" onClick={() => handleUrgent(true)}>YES</button>
+              <button className="cat-no" onClick={() => handleUrgent(false)}>NO</button>
             </div>
           )}
           {step === "important" && (
-            <div className="cat-bar">
-              <span className="cat-task">"{input}"</span>
-              <span className="cat-question">🎯 Important?</span>
-              <div className="cat-btns">
-                <button className="cat-btn cat-btn-yes" onClick={() => handleImportant(true)}>Yes</button>
-                <button className="cat-btn cat-btn-no" onClick={() => handleImportant(false)}>No</button>
-              </div>
+            <div className="cat-flow">
+              <span className="cat-task-name">"{input}"</span>
+              <span className="cat-q">🎯 Is this important?</span>
+              <button className="cat-yes" onClick={() => handleImportant(true)}>YES</button>
+              <button className="cat-no" onClick={() => handleImportant(false)}>NO</button>
             </div>
           )}
         </div>
       </header>
 
-      {/* ── MATRIX ── */}
-      <div className="matrix">
+      {/* ─── MATRIX ──────────────────────────────── */}
+      <div className="matrix-wrap">
+        {/* Axis */}
+        <div className="axis-v" />
+        <div className="axis-h" />
+        <span className="axis-label axis-urgent-high">← Urgent</span>
+        <span className="axis-label axis-urgent-low">Not Urgent →</span>
+        <span className="axis-label axis-imp-high">Important ↑</span>
+        <span className="axis-label axis-imp-low">↓ Not Important</span>
+
         {QUADRANTS.map((q) => {
           const qActive = tasks.filter((t) => t.quadrant === q.id && !t.done);
           const qDone = tasks.filter((t) => t.quadrant === q.id && t.done && !t.hidden_from_quadrant);
           const isOver = dragOver === q.id;
 
           return (
-            <div key={q.id} className={`quadrant${isOver ? " dragover" : ""}`}
-              style={{ borderLeftColor: q.color, background: isOver ? "rgba(255,255,255,0.03)" : q.bg }}
+            <div key={q.id} className={`quad${isOver ? " over" : ""}`}
               onDragOver={(e) => { e.preventDefault(); setDragOver(q.id); }}
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => handleDrop(e, q.id)}>
 
-              <div className="q-header">
-                <div className="q-title-group">
-                  <span style={{ fontSize: "16px" }}>{q.emoji}</span>
-                  <div>
-                    <div className="q-label" style={{ color: q.color }}>{q.label}</div>
-                    <div className="q-sub">{q.sub}</div>
-                  </div>
+              <div className="quad-hdr">
+                <div>
+                  <div className="quad-name" style={{ color: q.color }}>{q.emoji} {q.label}</div>
+                  <div className="quad-sub">{q.sub}</div>
                 </div>
-                <span className="q-count" style={{ color: q.color }}>{qActive.length}</span>
+                <div className="quad-badge" style={{ color: q.color, background: q.accent }}>
+                  {qActive.length}
+                </div>
               </div>
 
               {qActive.length === 0 && qDone.length === 0 && (
-                <div className="empty-state">No tasks · drop here to add</div>
+                <div className="empty">Drop tasks here</div>
               )}
 
               {qActive.map((task) => {
                 const due = getDueLabel(task.due_date);
                 return (
-                  <div key={task.id} className="chip" draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={() => { setDragging(null); setDragOver(null); }}>
+                  <div key={task.id} className="card"
+                    draggable onDragStart={(e) => handleDragStart(e, task)} onDragEnd={() => { setDragging(null); setDragOver(null); }}>
                     <div className="cb" onClick={() => handleToggleDone(task)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="chip-text" style={{ wordBreak: "break-word", marginBottom: "3px" }}>{task.text}</div>
+                      <div className="card-txt" style={{ marginBottom: due || true ? "4px" : 0, wordBreak: "break-word" }}>{task.text}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
-                        {due && <span className="due-tag" style={{ color: due.color }}>{due.label}</span>}
-                        <input type="date" className="inline-date" value={task.due_date || ""} onChange={(e) => handleDueDateChange(task, e.target.value)} title="Set due date" />
+                        {due && <span className="due-tag" style={{ color: due.color, background: due.bg }}>{due.label}</span>}
+                        <input type="date" className="idate" value={task.due_date || ""} onChange={(e) => handleDueDateChange(task, e.target.value)} title="Set due date" />
                       </div>
                     </div>
-                    <button className="del" onClick={() => handleDeletePermanently(task.id)}>✕</button>
+                    <button className="x-btn" onClick={() => handleDeletePermanently(task.id)}>✕</button>
                   </div>
                 );
               })}
 
               {qDone.length > 0 && (
                 <>
-                  {qActive.length > 0 && <hr className="done-divider" />}
-                  <div className="done-label">completed</div>
+                  {qActive.length > 0 && <hr className="done-div" />}
+                  <div className="done-lbl">completed</div>
                   {qDone.map((task) => (
-                    <div key={task.id} className="chip done-q">
+                    <div key={task.id} className="card done-q">
                       <div className="cb on" onClick={() => handleToggleDone(task)}>
-                        <span style={{ color: "white", fontSize: "8px" }}>✓</span>
+                        <span style={{ color: "#0d0d0d", fontSize: "8px", fontWeight: 900 }}>✓</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="chip-text" style={{ wordBreak: "break-word" }}>{task.text}</div>
+                        <div className="card-txt" style={{ wordBreak: "break-word" }}>{task.text}</div>
                       </div>
-                      <button className="del" onClick={() => handleHideFromQuadrant(task)}>✕</button>
+                      <button className="x-btn" onClick={() => handleHideFromQuadrant(task)}>✕</button>
                     </div>
                   ))}
                 </>
               )}
 
-              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.1)", marginTop: "10px", fontStyle: "italic" }}>{q.desc}</div>
+              <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.1)", marginTop: "10px", fontStyle: "italic" }}>{q.desc}</div>
             </div>
           );
         })}
       </div>
 
-      {/* ── COMPLETED SECTION ── */}
+      {/* ─── COMPLETED ───────────────────────────── */}
       {completedTasks.length > 0 && (
-        <div className="done-section">
-          <div className="done-header" onClick={() => setShowDone((v) => !v)}>
+        <div className="comp-section">
+          <div className="comp-hdr" onClick={() => setShowDone((v) => !v)}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "14px" }}>✅</span>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "13px", fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
-                Completed Tasks
-              </span>
-              <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 8px", borderRadius: "20px", background: "rgba(255,255,255,0.06)", color: "#2a9d8f" }}>{completedTasks.length}</span>
+              <span style={{ fontSize: "13px" }}>✅</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.4)", letterSpacing: "0.04em" }}>COMPLETED TASKS</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 8px", borderRadius: "20px", background: "rgba(46,216,168,0.12)", color: "#2ed8a8" }}>{completedTasks.length}</span>
             </div>
-            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "14px" }}>{showDone ? "▾" : "▸"}</span>
+            <span style={{ color: "rgba(255,255,255,0.2)", fontSize: "14px" }}>{showDone ? "▾" : "▸"}</span>
           </div>
           {showDone && (
-            <div className="done-body">
+            <div className="comp-body">
               {completedTasks.map((task) => {
                 const q = QUADRANTS.find((q) => q.id === task.quadrant);
                 return (
-                  <div key={task.id} className="chip done-b">
+                  <div key={task.id} className="card done-b">
                     <div className="cb on" onClick={() => handleToggleDone(task)}>
-                      <span style={{ color: "white", fontSize: "8px" }}>✓</span>
+                      <span style={{ color: "#0d0d0d", fontSize: "8px", fontWeight: 900 }}>✓</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="chip-text" style={{ wordBreak: "break-word" }}>{task.text}</div>
-                      <div style={{ display: "flex", gap: "5px", marginTop: "2px", flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ fontSize: "10px", color: q.color, fontWeight: 600 }}>{q.emoji} {q.label}</span>
-                        {task.due_date && <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.2)" }}>· {task.due_date}</span>}
+                      <div className="card-txt" style={{ wordBreak: "break-word" }}>{task.text}</div>
+                      <div style={{ display: "flex", gap: "5px", marginTop: "3px", flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ fontSize: "9px", color: q.color, fontWeight: 700, letterSpacing: "0.04em" }}>{q.emoji} {q.label.toUpperCase()}</span>
+                        {task.due_date && <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.2)" }}>· {task.due_date}</span>}
                       </div>
                     </div>
-                    <button className="del" onClick={() => handleDeletePermanently(task.id)}>✕</button>
+                    <button className="x-btn" onClick={() => handleDeletePermanently(task.id)}>✕</button>
                   </div>
                 );
               })}
@@ -480,7 +532,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="footer">☁️ Synced · drag to move · click ✓ to complete · ✕ to delete</div>
+      <div className="footer">☁️ Synced across devices · drag cards between quadrants · click ✓ to complete</div>
     </>
   );
 }
